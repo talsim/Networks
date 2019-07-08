@@ -5,9 +5,6 @@ PORT = 8820
 requests = ['TAKE_SCREENSHOT', 'DIR', 'SEND_FILE', 'DELETE', 'COPY', 'EXECUTE', 'EXIT']
 
 
-# TODO: COPY function gets 2 params, take care of that ;)
-
-
 def valid_request(request):
     """Check if the request is valid (is included in the available commands)
     Return:
@@ -26,7 +23,6 @@ def send_request_to_server(my_socket, request):
     """
     length = str(len(request)).zfill(2) # add zero to the start of the number if it is one digit
     full_request = length + request # building the request
-    print('full_request = ' + full_request)
     my_socket.send(full_request.encode())
 
 
@@ -36,8 +32,9 @@ def handle_server_response(my_socket, request):
     For example, DIR should result in printing the contents to the screen,
     while SEND_FILE should result in saving the received file and notifying the user
     """
-    pass
-
+    #request = request.upper()
+    data = my_socket.recv(1024)
+    print(f'Server sent: {data.decode()}')
 
 def main():
     # open socket with the server
@@ -54,7 +51,7 @@ def main():
         request = input("Enter command: ")
         if valid_request(request):
             send_request_to_server(my_socket, request)
-            #handle_server_response(my_socket, request)
+            handle_server_response(my_socket, request)
             if request == 'EXIT':
                 done = True
         else:
