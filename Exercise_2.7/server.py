@@ -2,6 +2,7 @@ import socket
 from PIL import ImageGrab
 import os.path
 
+
 IP = '0.0.0.0'
 PORT = 8820
 
@@ -31,59 +32,15 @@ def check_client_request(request_list):
     """
     command = request_list[0]
     try:
-        param = os.getcwd() + '\\' + request_list[1]
+        request_list[1] = os.getcwd() + '\\' + request_list[1]
     except TypeError:
-        param = None
-
-    if command == 'TAKE_SCREENSHOT': # TAKE_SCREENSHOT doesn't get any params
+        request_list[1] = None
+    if command == 'TAKE_SCREENSHOT':
         return True
-    elif command == 'DIR': # DIR gets the directory to show
-        if param != None:
-            if os.path.isdir(param):
-                return True
-            else:
-                return [False, 'directory does not exist!']
-        else:
-            return [False, 'Please add the directory']
-    elif command == 'SEND_FILE': # SEND_FILE gets the name of the file to send
-        if param != None:
-            if os.path.isfile(param):
-                return True
-            else:
-                return [False, 'File does not exist!']
-        else:
-            return [False, 'Please add the name of the file']
-    elif command == 'DELETE': # DELETE gets the name of the file to remove
-        if param != None:
-            if os.path.isfile(param):
-                return True
-            else:
-                return [False, 'File does not exist']
-        else:
-            return [False, 'Please add the name of the file']
-    elif command == 'COPY': # COPY gets the files to be copied
-        try: # user can enter one param
-            if param != None and request_list[2] != None:
-                param2 = os.getcwd() + '\\' + request_list[2]
-                if os.path.isfile(param) and os.path.isfile(param2):
-                    return True
-                else:
-                    return [False, 'one of the files does not exist!']
-            else:
-                return [False, 'Please add the files to be copied']
-        except IndexError:
-            return [False, 'Please add the second parameter']
-
-    elif command == 'EXECUTE': # EXECUTE gets the file to execute
-        if param != None:
-            if os.path.isfile(param):
-                return True
-            else:
-                return [False, 'File does not exist!']
-        else:
-            return [False, 'Please add the name of the file']
-    else: # command = 'EXIT'
+    elif command == 'EXIT': # command == 'EXIT'
         return True
+    import param_validators
+    return getattr(param_validators, f'validate_{command}')(request_list)
 
 
 def handle_client_request(request_list):
@@ -95,6 +52,7 @@ def handle_client_request(request_list):
         response: the requested data
     """
     return 'data you wanted'
+	
 
 def send_response_to_client(response, client_socket, command = None):
     """Create a protocol which sends the response to the client
@@ -116,8 +74,6 @@ def my_split(string):
     return list_string
 
 
-#request_list[0] = command
-#request_list[1 ++] = params
 #validation_list[0] = valid (True/False)
 #validation_list[1] = error_msg (if valid is False)
 def main():
@@ -126,17 +82,16 @@ def main():
     server_socket.bind((IP, PORT))
     server_socket.listen(1)
     client_socket, address = server_socket.accept()
-
     # handle requests until user asks to exit
     done = False
     while not done:
         request_list = receive_client_request(client_socket)
         validation_list = check_client_request(request_list)
-        if validation_list: # if valid is True
+        if validation_list == True: # if valid is True
             response = handle_client_request(request_list)
-            send_response_to_client(response, client_socket)
+            send_response_to_client(response, client_socket, request_list[0])
         else:
-            send_response_to_client(validation_list[1], client_socket, request_list[0])
+            send_response_to_client(validation_list[1], client_socket)
 
         if request_list[0] == 'EXIT':
             print('Quiting')
