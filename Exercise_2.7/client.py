@@ -48,12 +48,13 @@ def main():
     done = False
     # loop until user requested to exit
     while not done:
-        request = input("Enter command: ")
+        request = input("Enter command: ").upper()
         if valid_request(request):
             send_request_to_server(my_socket, request)
             handle_server_response(my_socket, request)
             if request == 'EXIT':
                 done = True
+                print('Quiting')
         else:
             print('Please enter one of the available commands above!')
 
