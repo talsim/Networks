@@ -1,6 +1,7 @@
 import socket
 from PIL import ImageGrab
 import os.path
+import param_validators
 
 
 IP = '0.0.0.0'
@@ -25,6 +26,7 @@ def receive_client_request(client_socket):
     return my_split(request.decode()) # splitting the request to command and params
 
 
+
 def check_client_request(request_list):
     """Check if the params are good.
     For example, the filename to be copied actually exists
@@ -41,13 +43,12 @@ def check_client_request(request_list):
     print(f'request_list = {request_list}')
     if command == 'TAKE_SCREENSHOT':
         return True
-    elif command == 'EXIT': # command == 'EXIT'
+    elif command == 'EXIT':
         return True
-    import param_validators
     return getattr(param_validators, f'validate_{command}')(request_list)
 
 
-def handle_client_request(request_list):
+def handle_client_request(request_list, c_socket):
     """Create the response to the client, given the command is legal and params are OK
 
     For example, return the list of filenames in a directory
@@ -55,7 +56,21 @@ def handle_client_request(request_list):
     Returns:
         response: the requested data
     """
-    return 'data you wanted'
+    command = request_list[0]
+    import handle_client_request_impl
+    if command == 'EXIT':
+        return 'Quiting'
+    elif command == 'COPY':
+        data = getattr(handle_client_request_impl, 'COPY')(request_list[1], request_list[2])
+        print(f'data = {data}')
+        return data
+    elif command == 'SEND_FILE':
+        data = getattr(handle_client_request_impl, 'SEND_FILE')(request_list[1], c_socket)
+        print(f'data = {data}')
+        return data
+    data = getattr(handle_client_request_impl, command)(request_list[1])
+    print(f'data = {data}')
+    return data
 	
 
 def send_response_to_client(response, client_socket, command = None):
@@ -92,13 +107,12 @@ def main():
         request_list = receive_client_request(client_socket)
         validation_list = check_client_request(request_list)
         if validation_list == True: # if valid is True
-            response = handle_client_request(request_list)
+            response = handle_client_request(request_list, client_socket)
             send_response_to_client(response, client_socket, request_list[0])
         else:
             send_response_to_client(validation_list[1], client_socket)
 
         if request_list[0] == 'EXIT':
-            print('Quiting')
             done = True
 
     client_socket.close()

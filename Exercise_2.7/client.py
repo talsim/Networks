@@ -32,7 +32,17 @@ def handle_server_response(my_socket, request):
     For example, DIR should result in printing the contents to the screen,
     while SEND_FILE should result in saving the received file and notifying the user
     """
-    #request = request.upper()
+    command = request.rsplit()[0]
+    if command == 'SEND_FILE':
+        f = open(request.rsplit()[1] + '_RECV', 'wb')
+        l = my_socket.recv(1024)
+        print('reciving')
+        while l:
+            f.write(l)
+            print('writing')
+            l = my_socket.recv(1024)
+        f.close()
+        print('done')
     data = my_socket.recv(1024)
     print(f'Server sent: {data.decode()}')
 
@@ -54,7 +64,6 @@ def main():
             handle_server_response(my_socket, request)
             if request == 'EXIT':
                 done = True
-                print('Quiting')
         else:
             print('Please enter one of the available commands above!')
 
