@@ -5,6 +5,8 @@ import os.path
 
 IP = '0.0.0.0'
 PORT = 8820
+#request_list[0] = command
+#request_list[1 ++] = params
 
 
 def receive_client_request(client_socket):
@@ -30,11 +32,13 @@ def check_client_request(request_list):
         valid: True/False
         error_msg: None if all is OK, otherwise some error message
     """
+
     command = request_list[0]
-    try:
+    if request_list[1] != None:
         request_list[1] = os.getcwd() + '\\' + request_list[1]
-    except TypeError:
+    else:
         request_list[1] = None
+    print(f'request_list = {request_list}')
     if command == 'TAKE_SCREENSHOT':
         return True
     elif command == 'EXIT': # command == 'EXIT'
