@@ -1,15 +1,16 @@
+from os import listdir
+import socket
+
 
 # request_list[0] = command
 # request_list[1 ++] = params
 
 
 def DIR(param):
-    from os import listdir
     files_list = listdir(param)
     return files_list
 
 def SEND_FILE(param, s):
-    import socket
     f = open(param, 'rb')
     l = f.read(1024)
     print('reading')
