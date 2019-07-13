@@ -21,8 +21,8 @@ def send_request_to_server(my_socket, request):
     Example: '04EXIT'
     Example: '12DIR c:\cyber'
     """
-    length = str(len(request)).zfill(2) # add zero to the start of the number if it is one digit
-    full_request = length + request # building the request
+    length = str(len(request)).zfill(2)  # add zero to the start of the number if it is one digit
+    full_request = length + request  # building the request
     my_socket.send(full_request.encode())
 
 
@@ -33,18 +33,22 @@ def handle_server_response(my_socket, request):
     while SEND_FILE should result in saving the received file and notifying the user
     """
     command = request.rsplit()[0]
-    if command == 'SEND_FILE':
-        f = open(request.rsplit()[1] + '_RECV', 'wb')
+    recv = my_socket.recv(1024)
+    if recv == 'sf_sending'.encode():
+        f = open(f'{request.rsplit()[1]}_RECV', 'wb')
+        my_socket.send(b'ready')
         l = my_socket.recv(1024)
         print('reciving')
         while l:
             f.write(l)
             print('writing')
             l = my_socket.recv(1024)
+            print('reciving')
         f.close()
         print('done')
-    data = my_socket.recv(1024)
-    print(f'Server sent: {data.decode()}')
+    else:
+        print(f'Server send: {recv.decode()}')
+
 
 def main():
     # open socket with the server
@@ -69,5 +73,19 @@ def main():
 
     my_socket.close()
 
+
 if __name__ == '__main__':
     main()
+
+
+
+    """if command == 'SEND_FILE':
+    l = my_socket.recv(1024)
+    print('reciving')
+    while l:
+        f.write(l)
+        print('writing')
+        l = my_socket.recv(1024)
+    f.close()
+    print('done')
+    """
