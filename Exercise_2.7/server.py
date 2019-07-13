@@ -3,7 +3,6 @@ import os.path
 import param_validators
 import handle_client_request_impl
 
-
 IP = '0.0.0.0'
 PORT = 8820
 
@@ -29,7 +28,6 @@ def receive_client_request(client_socket):
 
 
 def check_client_request(request_list):
-
     """Check if the params are good.
     For example, the filename to be copied actually exists
     Returns:
@@ -47,6 +45,7 @@ def check_client_request(request_list):
     print(f'validator = {validator}')
     return validator
 
+
 def handle_client_request(request_list, c_socket):
     """Create the response to the client, given the command is legal and params are OK
 
@@ -60,29 +59,39 @@ def handle_client_request(request_list, c_socket):
     if command == 'EXIT':
         return 'Quiting'
     elif command == 'COPY':
-        data = getattr(handle_client_request_impl, 'COPY')(request_list[1], request_list[2])
-        print(f'data = {data}')
-        return data
-    elif command == 'SEND_FILE':
-        data = getattr(handle_client_request_impl, 'SEND_FILE')(request_list[1], c_socket)
-        print(f'data = {data}')
-        return data
-    data = getattr(handle_client_request_impl, command)(request_list[1])
-    print(f'data = {data}')
-    return data
+        response = getattr(handle_client_request_impl, 'COPY')(request_list[1], request_list[2])
+        print(f'response = {response}')
+        return response
+    response = getattr(handle_client_request_impl, command)(request_list[1])
+    return response
 
 
-def send_response_to_client(response, client_socket, command=None):
+def send_response_to_client(response, client_socket, command, error = False):
     """Create a protocol which sends the response to the client
 
-    The protocol should be able to handle short responses as well as files
-    (for example when needed to send the screenshot to the client)
+    the protocol gets the response and checks if its an error or the data
+    and operates according to it
     """
-    if command is None:  # if respone = error_msg
-        client_socket.send(str(response).encode())
-    else:
-        client_socket.send(str(response).encode())
-
+    if error == False:
+        if command == 'SEND_FILE':
+            client_socket.send(b'sf_sending')
+            f = response
+            l = f.read(1024)
+            print('reading')
+            recv = client_socket.recv(1024)
+            if recv == 'ready'.encode():
+                while l:
+                    print('sending')
+                    client_socket.send(l)
+                    l = f.read(1024)
+                    print('reading')
+            f.close()
+            print('done')
+            client_socket.shutdown(socket.SHUT_WR)
+            return
+        elif command == 'TAKE_SCREENSHOT':
+            pass
+    client_socket.send(str(response).encode())
 
 def my_split(string):
     list_string = string.split()
@@ -105,11 +114,11 @@ def main():
     while not done:
         request_list = receive_client_request(client_socket)
         validation_list = check_client_request(request_list)
-        if validation_list == True:  # if valid is True
+        if validation_list is True:  # if valid is True
             response = handle_client_request(request_list, client_socket)
             send_response_to_client(response, client_socket, request_list[0])
         else:
-            send_response_to_client(validation_list[1], client_socket)
+            send_response_to_client(validation_list[1], client_socket, request_list[0], True)
 
         if request_list[0] == 'EXIT':
             done = True
