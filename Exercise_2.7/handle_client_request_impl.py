@@ -1,5 +1,4 @@
 from os import listdir
-import socket
 
 
 # request_list[0] = command
@@ -10,17 +9,9 @@ def DIR(param):
     files_list = listdir(param)
     return files_list
 
-def SEND_FILE(param, s):
+def SEND_FILE(param):
     f = open(param, 'rb')
-    l = f.read(1024)
-    print('reading')
-    while l:
-        print('sending')
-        s.send(l)
-        l = f.read(1024)
-    f.close()
-    print('done')
-    return 'File has been successfully sended'
+    return f
 
 def TAKE_SCREENSHOT(param):
     pass
