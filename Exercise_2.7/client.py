@@ -1,4 +1,6 @@
 import socket
+import select
+from random import randint
 
 IP = '127.0.0.1'
 PORT = 8820
@@ -32,20 +34,26 @@ def handle_server_response(my_socket, request):
     For example, DIR should result in printing the contents to the screen,
     while SEND_FILE should result in saving the received file and notifying the user
     """
-    command = request.rsplit()[0]
     recv = my_socket.recv(1024)
     if recv == 'sf_sending'.encode():
-        f = open(f'{request.rsplit()[1]}_RECV', 'wb')
+        extension = my_socket.recv(1024)
+        if extension == 'PNG':
+            f = open(f'screenshot.{extension.decode()}{randint(1,100)}', 'wb')
+        else:
+            f = open(f'{request.rsplit()[1]}.{extension.decode()}', 'wb')
         my_socket.send(b'ready')
-        l = my_socket.recv(1024)
+        """l = my_socket.recv(1024)
         print('reciving')
         while l:
             f.write(l)
             print('writing')
             l = my_socket.recv(1024)
-            print('reciving')
+            print('reciving')"""
         f.close()
-        print('done')
+
+
+
+
     else:
         print(f'Server send: {recv.decode()}')
 
@@ -76,16 +84,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-    """if command == 'SEND_FILE':
-    l = my_socket.recv(1024)
-    print('reciving')
-    while l:
-        f.write(l)
-        print('writing')
-        l = my_socket.recv(1024)
-    f.close()
-    print('done')
-    """
