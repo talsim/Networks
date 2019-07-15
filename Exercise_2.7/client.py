@@ -1,5 +1,4 @@
 import socket
-import select
 from random import randint
 
 IP = '127.0.0.1'
@@ -34,28 +33,39 @@ def handle_server_response(my_socket, request):
     For example, DIR should result in printing the contents to the screen,
     while SEND_FILE should result in saving the received file and notifying the user
     """
-    recv = my_socket.recv(1024)
-    if recv == 'sf_sending'.encode():
-        extension = my_socket.recv(1024)
-        if extension == 'PNG':
-            f = open(f'screenshot.{extension.decode()}{randint(1,100)}', 'wb')
-        else:
-            f = open(f'{request.rsplit()[1]}.{extension.decode()}', 'wb')
-        my_socket.send(b'ready')
-        """l = my_socket.recv(1024)
-        print('reciving')
-        while l:
-            f.write(l)
-            print('writing')
-            l = my_socket.recv(1024)
-            print('reciving')"""
+    message = my_socket.recv(1024)
+    if message == 'file transfer'.encode():
+        ext_n_size = my_socket.recv(1024).decode()
+        f_size = int(ext_n_size.split()[1])
+        extension = ext_n_size.split()[0]
+        if ext_n_size.startswith('png'):  # picture
+            f = open(f'new_screenshot{randint(1, 100)}.{extension}', 'wb')
+        else:  # file
+            f = open(f'new_{request.rsplit()[1].lower()}', 'wb')
+        my_socket.send(b'GOT EXT AND SIZE')
+        RECV_FILE(f, f_size, my_socket)
         f.close()
 
-
-
-
     else:
-        print(f'Server send: {recv.decode()}')
+        print(f'Server response: {message.decode()}')
+
+
+def RECV_FILE(f, size, s):
+    """ RECV_FILE gets the file and the file size
+
+    he receives the file data in small parts and when finished,
+    he prints "Download Complete!"
+    """
+    data = s.recv(1024)
+    total_recv = len(data)
+    f.write(data)
+    while total_recv < size:
+        data = s.recv(1024)
+        print('receiving')
+        total_recv += len(data)
+        f.write(data)
+        print('writing')
+    print('Download Complete!')
 
 
 def main():

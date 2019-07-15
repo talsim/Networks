@@ -59,39 +59,43 @@ def handle_client_request(request_list, c_socket):
     return response
 
 
-def send_response_to_client(response, client_socket, command, extension = 'None',  error = False):
+def send_response_to_client(response, client_socket, command, extension=None, error=False):
     """Create a protocol which sends the response to the client
 
     the protocol gets the response and checks if its an error or the data
     and operates according to it
     """
+
     if error == False:
         if command == 'SEND_FILE':
             SEND_FILE(response, client_socket, extension)
             return
         elif command == 'TAKE_SCREENSHOT':
-            file = open('screenshot.png', 'rb')
+            file = open('screenshot_to_send.png', 'rb')
             SEND_FILE(file, client_socket, 'PNG')
             return
     client_socket.send(str(response).encode())
 
+
 def SEND_FILE(f, client_socket, extension):
-    client_socket.send(b'sf_sending')
-    if extension == 'PNG':
-        client_socket.send(b'png')
-    else: # just a file
-        client_socket.send(str(extension).encode())
-    l = f.read(1024)
-    print('reading')
-    recv = client_socket.recv(1024)
-    if recv == 'ready'.encode():
-        while l:
-            print('sending')
-            client_socket.send(l)
-            l = f.read(1024)
-            print('reading')
+    """
+    SEND_FILE sends the extension and the size of the file,
+    and starts sending the data in small parts.
+    """
+    client_socket.send(b'file transfer')
+    f_size = str(os.path.getsize(f.name))
+    if extension == 'PNG':  # picture
+        client_socket.send(b'png ' + f_size.encode())
+    else:  # just a file
+        client_socket.send(extension.encode() + b' ' + f_size.encode())
+    if client_socket.recv(1024) == 'GOT EXT AND SIZE'.encode():
+        bytes_to_send = f.read(1024)
+        client_socket.send(bytes_to_send)
+        while bytes_to_send:
+            bytes_to_send = f.read(1024)
+            client_socket.send(bytes_to_send)
     f.close()
-    print('done')
+
 
 def my_split(string):
     list_string = string.split()
