@@ -1,5 +1,6 @@
 import socket
 import os
+from http import HTTPStatus
 from pathlib import Path
 from datetime import datetime
 
@@ -25,8 +26,10 @@ def get_client_request(client):
         filePath = current_dir / 'webroot' / 'index.html'  # Load index file as root
     else:
         print(f'\ncurrent_dir = {current_dir}\n')
-        print(f'\nfileNmae = {fileName}\n')
-        filePath = current_dir / 'webroot' / fileName
+        print(f'\nfileName[1] = {fileName}\n')
+        fileName = fileName.replace("/", os.sep) # replacing all the separators with the ones similar to the OS
+        filePath = f'{current_dir}{os.sep}webroot{fileName}'
+        print(f'\nfileName[2] = {fileName}\n')
     return [filePath, method]
 
 
@@ -44,8 +47,7 @@ def generate_headers(code, filePath = None):
     with the code given
     """
     header = ''
-    mimetype = ''
-    if code == '200':
+    if code == HTTPStatus.OK.value:
         header += 'HTTP/1.1 200 OK\n'
         header += f'Content-Length: {os.path.getsize(filePath)}\n'
         if str(filePath).endswith(('.txt', '.html')):
@@ -56,11 +58,11 @@ def generate_headers(code, filePath = None):
             mimetype = 'text/javascript; charset=UTF-8'
         else:  # (.css)
             mimetype = 'text/css'
-    elif code == '404':
+        header += f'Content-Type: {mimetype}\n'
+    elif code == HTTPStatus.NOT_FOUND.value:
         header += 'HTTP/1.1 404 Not Found\n'
     header += f'Date: {datetime.now()}\n'
-    header += 'Server: Gvahim Http WebServer\n'
-    header += f'Content-Type: {mimetype}\n\n'
+    header += 'Server: Gvahim Http WebServer\n\n'
     print(f'\nheader = {header}')
     return header
 
@@ -70,13 +72,18 @@ def handle_client(code, client, filePath_to_serve = None):
     """
     Main function for handling connected clients and serving files from webroot
     """
-    if code == '200':
-        file = open(filePath_to_serve, 'rb')
-        response_data = file.read()
-        file.close()
+    if code == HTTPStatus.OK.value:
+        if(str(filePath_to_serve).endswith('index.html')):
+            with open(filePath_to_serve, 'r') as file:
+                response_data = file.read()
+                print(f'\n\n\nDATA: {response_data}\n\n\n')
+        else:
+            with open(filePath_to_serve, 'rb') as file:
+                response_data = file.read()
+                print(f'\n\n\nDATA: {response_data}\n\n\n')
         header = generate_headers(code, filePath_to_serve)
-    elif code == '404':
-        response_data = '404 Error: Page not found'
+    elif code == HTTPStatus.NOT_FOUND.value:
+        response_data = '404 Error: NOT FOUND'
         header = generate_headers(code)
     response = str(header).encode()
     response += str(response_data).encode()
@@ -90,6 +97,7 @@ def main():
     server_socket.listen(1)
     print('Listening')
     while True:
+        print('waiting for client')
         client_socket, address = server_socket.accept()
         print(f'Client connected from: {address}')
         filePath, method = get_client_request(client_socket)
@@ -101,9 +109,9 @@ def main():
         if valid_method:
             file_exist = os.path.isfile(filePath)
             if file_exist:
-                handle_client('200', client_socket, filePath)
+                handle_client(200, client_socket, filePath)
             else:  # file doesn't exist
-                handle_client('404', client_socket)
+                handle_client(404, client_socket)
         else:  # method not valid (only GET method supported)
             client_socket.close()
 
