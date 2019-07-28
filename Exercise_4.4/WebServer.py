@@ -25,11 +25,8 @@ def get_client_request(client):
     if fileName == '/':
         filePath = current_dir / 'webroot' / 'index.html'  # Load index file as root
     else:
-        print(f'\ncurrent_dir = {current_dir}\n')
-        print(f'\nfileName[1] = {fileName}\n')
-        fileName = fileName.replace("/", os.sep) # replacing all the separators with the ones similar to the OS
+        fileName = fileName.replace("/", os.sep)  # replacing all the separators with the ones similar to the OS
         filePath = f'{current_dir}{os.sep}webroot{fileName}'
-        print(f'\nfileName[2] = {fileName}\n')
     return [filePath, method]
 
 
@@ -41,7 +38,8 @@ def check_given_method(method):
         return True
     return False
 
-def generate_headers(code, filePath = None):
+
+def generate_headers(code, filePath=None):
     """
     Generates the headers for http response
     with the code given
@@ -56,8 +54,12 @@ def generate_headers(code, filePath = None):
             mimetype = 'image/jpg'
         elif str(filePath).endswith('.js'):
             mimetype = 'text/javascript; charset=UTF-8'
-        else:  # (.css)
+        elif str(filePath).endswith('.css'):
             mimetype = 'text/css'
+        elif str(filePath).endswith('.ico'):
+            mimetype = 'image/x-icon'
+        else:
+            mimetype = 'text/plain'
         header += f'Content-Type: {mimetype}\n'
     elif code == HTTPStatus.NOT_FOUND.value:
         header += 'HTTP/1.1 404 Not Found\n'
@@ -67,28 +69,22 @@ def generate_headers(code, filePath = None):
     return header
 
 
-
-def handle_client(code, client, filePath_to_serve = None):
+def handle_client(code, client, filePath_to_serve=None):
     """
     Main function for handling connected clients and serving files from webroot
     """
     if code == HTTPStatus.OK.value:
-        if(str(filePath_to_serve).endswith('index.html')):
-            with open(filePath_to_serve, 'r') as file:
-                response_data = file.read()
-                print(f'\n\n\nDATA: {response_data}\n\n\n')
-        else:
-            with open(filePath_to_serve, 'rb') as file:
-                response_data = file.read()
-                print(f'\n\n\nDATA: {response_data}\n\n\n')
+        with open(filePath_to_serve, 'rb') as file:
+            response_data = file.read()
+            print(f'\n\n\nDATA: {response_data}\n\n\n')
         header = generate_headers(code, filePath_to_serve)
     elif code == HTTPStatus.NOT_FOUND.value:
         response_data = '404 Error: NOT FOUND'
         header = generate_headers(code)
     response = str(header).encode()
-    response += str(response_data).encode()
-    print(f'response = {response.decode()}')
+    response += response_data
     client.sendall(response)
+
 
 def main():
     # open socket with client
