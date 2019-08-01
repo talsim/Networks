@@ -1,10 +1,10 @@
 import socket
 import os
 import logging
+import WebFunctions
 from http import HTTPStatus
 from pathlib import Path
 from datetime import datetime
-
 
 IP = '0.0.0.0'
 PORT = 80
@@ -32,16 +32,20 @@ def get_client_request(client):
             fileName = fileName.replace("/", os.sep)  # replacing all the separators with the ones similar to the OS
             filePath = f'{current_dir}{os.sep}webroot{fileName}'
         return [filePath, method]
-    params = addr.split('?', 1)[1].split('=', 1)[1]  # GET params
-    logging.info(f'\n\nparams = {params}\n\n')
-    return [addr, method, params]
+    func = addr.split('?')[0].split('/')[1].replace('-', '_')
+    logging.info(f'func = {func}')
+    params = addr.split('?', 1)[1]  # GET parameters
+    if '&' not in params:  # only one parameter
+        params = params.split('=')[1]
+    logging.info(f'params = {params}')
+    return [addr, method, func, params]
 
 
 def check_given_method(method):
     """
-    Check if the given method is GET (only GET supported)
+    Check if the given method is valid (GET or POST)
     """
-    if method == "GET":
+    if method == "GET" or method == "POST":
         return True
     return False
 
@@ -73,7 +77,7 @@ def get_mimetype(filePath):
     return mimetype
 
 
-def generate_headers(status_code, filePath=None, params=None):
+def generate_headers(status_code, filePath=None, data=None):
     """
     Generates the headers for http response
     with the status_code given
@@ -81,8 +85,8 @@ def generate_headers(status_code, filePath=None, params=None):
     header = ''
     if status_code == HTTPStatus.OK.value:
         header += 'HTTP/1.1 200 OK\n'
-        if params is not None:
-            header += f'Content-Length: {len(str(params))}\n'
+        if data is not None:
+            header += f'Content-Length: {len(str(data))}\n'
             header += 'Content-Type: text/plain\n'
         elif filePath is not None:
             header += f'Content-Length: {os.path.getsize(filePath)}\n'
@@ -95,7 +99,7 @@ def generate_headers(status_code, filePath=None, params=None):
     return header
 
 
-def handle_client(status_code, client, filePath_to_serve=None, params=None):
+def handle_client(status_code, client, func=None, filePath_to_serve=None, params=None):
     """
     Main function for handling connected clients and serving files from webroot
     """
@@ -105,10 +109,10 @@ def handle_client(status_code, client, filePath_to_serve=None, params=None):
                 response_data = file.read()
             header = generate_headers(status_code, filePath_to_serve)
         elif params is not None:
-            params = int(params) + 1
-            response_data = str(params).encode()
-            header = generate_headers(status_code, params=params)
-            logging.info(f'\n\n\nDATA: {response_data}\n\n\n')
+            response_data = getattr(WebFunctions, func)(params)
+            header = generate_headers(status_code, data=response_data)
+            response_data = str(response_data).encode()
+            logging.info(f'DATA: {response_data}')
     elif status_code == HTTPStatus.NOT_FOUND.value:  # 404
         response_data = '404 Error: NOT FOUND'
         header = generate_headers(status_code)
@@ -127,7 +131,8 @@ def _listen():
 
 # req_list[0] = address
 # req_list[1] = method
-# req_list[2] = params
+# req_list[2] = function
+# req_list[3] = params
 def main():
     server_socket = _listen()
     logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')  # init
@@ -139,13 +144,13 @@ def main():
         if req_list[1] == '':
             logging.info('Client disconnected')
             continue
-        logging.info(f'filePath: {req_list[0]}\nmethod: {req_list[1]}')
+        logging.info(f'address: {req_list[0]}\nmethod: {req_list[1]}')
         valid_method = check_given_method(req_list[1])
         if valid_method:
             if len(req_list) > 2:  # if there is parameters, pass it to handle_client()
-                handle_client(200, client_socket, params=req_list[2])
+                handle_client(200, client_socket, func=req_list[2], params=req_list[3])
             elif os.path.isfile(req_list[0]):  # if file exist
-                handle_client(200, client_socket, req_list[0])
+                handle_client(200, client_socket, filePath_to_serve=req_list[0])
             else:  # file doesn't exist
                 handle_client(404, client_socket)
         else:  # method not valid (only GET method supported)
