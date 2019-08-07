@@ -12,13 +12,12 @@ PORT = 80
 
 def get_client_request(client):
     """
-    Get the client request and spilt it to command(GET) and file path to serve.
-    Return the file path and the method
+    Get the client request and spilt it to the needed parameters.
+    Return the parameters.
     """
     req = client.recv(1024)
     if req == b'':
         return None
-
     req_content = req.split(b'\r\n\r\n')[0].decode()
     string_list = req_content.split(' ')  # Split request from spaces
     method = string_list[0]  # First string is the method
@@ -28,8 +27,11 @@ def get_client_request(client):
         file_name = addr
         if file_name == '/':
             file_path = current_dir / 'webroot' / 'index.html'  # Load index file as root
+        elif file_name.startswith('/favicon'):
+            root = f'{current_dir}{os.sep}'
+            directory = 'webroot' / Path('imgs') / Path(file_name)
+            file_path = root / directory
         else:
-            file_name = file_name.replace("/", os.sep)  # replacing all the separators with the ones similar to the OS
             file_path = f'{current_dir}{os.sep}webroot{file_name}'
         return [file_path, method]
     func = addr.split('?')[0].split('/')[1].replace('-', '_')
@@ -109,11 +111,8 @@ def handle_client(status_code, client, func=None, file_path_to_serve=None, param
                 response_data = file.read()
             header = generate_headers(status_code, file_path_to_serve)
         elif params is not None:
-            if func == 'upload':
-                # params = f'<file_name>{params}</file_name> <client>{client}</client> <request>{req}</request>' # adding additional parameters that upload function requires
-                response_data = getattr(WebFunctions, func)(params, client, req)
-            else:
-                response_data = getattr(WebFunctions, func)(params)
+            params_list = get_params_list(params, client, req, func)
+            response_data = getattr(WebFunctions, func)(params_list)
             header = generate_headers(status_code, data=response_data)
             response_data = str(response_data).encode()
             logging.info(f'DATA: {response_data}')
@@ -123,6 +122,20 @@ def handle_client(status_code, client, func=None, file_path_to_serve=None, param
     response = str(header).encode()
     response += response_data
     client.sendall(response)
+
+
+def get_params_list(params, client, req, func):
+    """
+    function to get the needed parameters for the function to execute
+    Returns params list
+    """
+    params_list = [params]
+    if func == 'upload':
+        params_list.append(client)
+        params_list.append(req)
+    elif func == 'image':
+        params_list.append(client)
+    return params_list
 
 
 def _listen():
@@ -137,6 +150,7 @@ def _listen():
 # req_list[1] = method
 # req_list[2] = function
 # req_list[3] = params
+# req_list[4] = request
 def main():
     server_socket = _listen()
     logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')  # init
@@ -157,7 +171,7 @@ def main():
                 handle_client(200, client_socket, file_path_to_serve=req_list[0])
             else:  # file doesn't exist
                 handle_client(404, client_socket)
-        else:  # method not valid (only GET method supported)
+        else:
             client_socket.close()
 
 
